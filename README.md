@@ -1,6 +1,6 @@
 # Sentinel Guard
 
-An AI-powered Web Application Firewall (WAF) and reverse proxy that uses multi-agent LLM orchestration to detect threats semantically — catching zero-day exploits and business logic attacks that signature-based rules miss entirely.
+An AI-powered Web Application Firewall (WAF) and reverse proxy that uses multi-agent LLM orchestration to detect threats semantically — catching zero-day exploits and business logic attacks that signature-based rules miss.
 
 ---
 
