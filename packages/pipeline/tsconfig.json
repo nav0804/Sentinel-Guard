@@ -1,0 +1,15 @@
+// packages/pipeline/tsconfig.json
+{
+    "extends": "../../config/tsconfig/base.json",
+    "compilerOptions": {
+      "outDir": "dist",
+      "rootDir": "src"
+    },
+    "references": [
+      { "path": "../schemas" },
+      { "path": "../cache" },
+      { "path": "../ip-reputation" },
+      { "path": "../logger" }
+    ],
+    "include": ["src"]
+  }

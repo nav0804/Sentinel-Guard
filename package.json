@@ -1,0 +1,25 @@
+{
+  "name": "Sentinel Guard",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev":   "turbo run dev",
+    "lint":  "turbo run lint",
+    "test":  "turbo run test"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.30.2",
+  "devDependencies": {
+    "turbo": "^2.9.6"
+  }
+}
