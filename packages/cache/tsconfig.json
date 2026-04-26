@@ -4,11 +4,7 @@
         "outDir": "dist",
         "rootDir": "src"
     },
-    "references": [
-        {
-            "path": "../schemas"
-        }
-    ],
+    "references": [],
     "include": [
         "src"
     ]

@@ -10,17 +10,6 @@
     "outDir": "dist",
     "rootDir": "src",
     "esModuleInterop": true,
-    "skipLibCheck": true,
-    "files": [],
-    "references": [
-      { "path": "packages/schemas" },
-      { "path": "packages/logger" },
-      { "path": "packages/cache" },
-      { "path": "packages/ip-reputation" },
-      { "path": "packages/agents" },
-      { "path": "packages/pipeline" },
-      { "path": "apps/agent-runner" },
-      { "path": "apps/proxy" }
-    ]
+    "skipLibCheck": true
   }
 }

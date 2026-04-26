@@ -1,0 +1,21 @@
+{
+  "name": "@sentinel-guard/agent-runner",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "dependencies": {
+    "fastify": "^5.8.5",
+    "@fastify/http-proxy": "^11.4.4",
+    "@sentinel/schemas": "workspace:*",
+    "@sentinel/agents": "workspace:*",
+    "@sentinel/logger": "workspace:*"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "start": "node dist/index.js"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "typescript": "^6.0.3"
+  }
+}

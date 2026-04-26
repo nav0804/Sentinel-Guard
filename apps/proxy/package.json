@@ -1,0 +1,22 @@
+{
+  "name": "@sentinel-guard/proxy",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "dependencies": {
+    "fastify": "^5.8.5",
+    "@fastify/http-proxy": "^11.4.4",
+    "@sentinel/schemas": "workspace:*",
+    "@sentinel/agents": "workspace:*",
+    "@sentinel/logger": "workspace:*",
+    "@sentinel/cache": "workspace:*",
+    "@sentinel/pipeline": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "start": "node dist/index.js"
+  }
+}

@@ -1,0 +1,30 @@
+services:
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+
+  agent-runner:
+    build:
+      context: .
+      dockerfile: config/docker/agent-runner.dockerfile
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - NODE_ENV=development
+    ports: ["3001:3001"]
+    depends_on:
+      - redis
+
+  proxy:
+    build:
+      context: .
+      dockerfile: config/docker/proxy.dockerfile
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - AGENT_RUNNER_URL=http://agent-runner:3001
+      - DOWNSTREAM_URL=${DOWNSTREAM_URL}
+      - NODE_ENV=development
+    ports: ["3000:3000"]
+    depends_on:
+      - redis
+      - agent-runner

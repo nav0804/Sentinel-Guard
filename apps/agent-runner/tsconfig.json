@@ -1,0 +1,13 @@
+{
+    "extends": "../../config/tsconfig/base.json",
+    "compilerOptions": {
+        "outDir": "dist",
+        "rootDir": "src"
+    },
+    "references": [
+        { "path": "../../packages/schemas" },
+        { "path": "../../packages/logger" },
+        { "path": "../../packages/agents" }
+    ],
+    "include": ["src"]
+}

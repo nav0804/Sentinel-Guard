@@ -6,10 +6,11 @@
       "rootDir": "src"
     },
     "references": [
-      { "path": "../schemas" },
-      { "path": "../cache" },
-      { "path": "../ip-reputation" },
-      { "path": "../logger" }
-    ],
+    { "path": "../schemas" },
+    { "path": "../logger" },
+    { "path": "../cache" },
+    { "path": "../ip-reputation" },
+    { "path": "../agents" }
+  ],
     "include": ["src"]
   }
