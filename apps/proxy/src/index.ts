@@ -34,60 +34,55 @@ app.setErrorHandler((error: Error, req, reply) => {
 // Tier 2: Fastify schema validation (structural check before route handlers)
 app.addHook("preHandler", async (req, reply) => {
   try {
-    // Sanitize headers to avoid circular references
-    const sanitizedHeaders: Record<string, string> = {};
+    const safeHeaders: Record<string, string> = {};
     for (const [key, value] of Object.entries(req.headers)) {
-      if (typeof value === "string") {
-        sanitizedHeaders[key] = value;
-      } else if (Array.isArray(value)) {
-        sanitizedHeaders[key] = value.join(", ");
+      safeHeaders[key] = Array.isArray(value)
+        ? value.join(", ")
+        : String(value || "");
+    }
+
+    // 🌟 THE FIX: Strictly serialize the body, or drop it if it's a Stream
+    let safeBody = undefined;
+    if (req.body) {
+      // Check if it's a Stream (Streams have a .pipe method)
+      if (typeof (req.body as any).pipe === "function") {
+        safeBody = "[Raw Stream - Skipped]";
+      } else {
+        try {
+          // Force a deep clone. If it's circular, it fails here safely.
+          safeBody = JSON.parse(JSON.stringify(req.body));
+        } catch (e) {
+          safeBody = "[Circular Body - Skipped]";
+        }
       }
     }
 
-    const incoming = {
-      method: req.method,
-      route: req.url,
-      headers: sanitizedHeaders,
-      body: req.body,
-      ip: req.ip,
+    const cleanRequest = {
+      method: String(req.method),
+      route: String(req.url),
+      headers: safeHeaders,
+      body: safeBody,
+      ip: String(req.ip),
     };
 
-    const parsed = IncomingRequestSchema.safeParse(incoming);
+    const parsed = IncomingRequestSchema.safeParse(cleanRequest);
     if (!parsed.success) {
-      logger.warn({ ip: req.ip }, "Tier 2 schema rejection");
-      return reply.code(400).send({ error: "Invalid request shape" });
+      return reply.code(400).send({ error: "Bad Request" });
     }
 
     const verdict = await runPipeline(parsed.data);
 
     if (verdict.decision === "MALICIOUS") {
-      logger.warn(
-        {
-          ip: req.ip,
-          decision: verdict.decision,
-          reason: verdict.reason,
-          tier: verdict.tier,
-        },
-        "Request blocked"
-      );
       return reply
         .code(403)
         .send({ error: "Forbidden", reason: verdict.reason });
     }
-
-    logger.info(
-      { ip: req.ip, tier: verdict.tier },
-      "Request passed — proxying"
-    );
-  } catch (error) {
-    // Catch any errors during request processing
-    const errorMsg = error instanceof Error ? error.message : String(error);
-    logger.error({ error: errorMsg, ip: req.ip }, "Request processing error");
-    throw error;
+  } catch (error: any) {
+    logger.error({ msg: "Pipeline crash", err: error.message });
+    return reply.code(500).send({ error: "Internal Server Error" });
   }
 });
 
-// Proxy clean requests downstream
 app.register(proxy, { upstream: DOWNSTREAM, prefix: "/" });
 
 app.listen({ port: 3000, host: "0.0.0.0" }, () =>

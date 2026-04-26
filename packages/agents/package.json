@@ -14,9 +14,10 @@
     "build": "tsc --build"
   },
   "dependencies": {
-    "@google/genai": "^1.50.1",
+    "@anthropic-ai/sdk": "^0.91.1",
     "@langchain/langgraph": "^1.2.9",
-    "@sentinel/schemas": "workspace:*"
+    "@sentinel/schemas": "workspace:*",
+    "openai": "^6.34.0"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",

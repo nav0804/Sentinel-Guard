@@ -7,13 +7,16 @@ export const redis = new Redis(
 );
 
 export function hashRequest(req: IncomingRequest): string {
-  const hashable = {
-    method: req.method,
-    route: req.route,
-    body: req.body ?? "",
-  };
-  const raw = JSON.stringify(hashable);
-  return createHash("sha256").update(raw).digest("hex");
+  // Explicitly pick ONLY what defines a unique request
+  const rawData = JSON.stringify({
+    m: req.method,
+    r: req.route,
+    b: req.body ?? {},
+    // Don't hash all headers (too much noise like 'User-Agent' or 'Cookie')
+    // Just hash the ones that matter for security, or skip headers if not needed.
+  });
+
+  return createHash("sha256").update(rawData).digest("hex");
 }
 
 const CACHE_TTL = 60 * 60; // 1 hour

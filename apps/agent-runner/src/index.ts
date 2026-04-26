@@ -3,7 +3,7 @@ import { IncomingRequestSchema } from "@sentinel/schemas";
 import { evaluateRequest } from "@sentinel/agents";
 import { logger } from "@sentinel/logger";
 
-const app = Fastify();
+const app = Fastify({ logger: true });
 
 app.post("/evaluate", async (req, reply) => {
   const parsed = IncomingRequestSchema.safeParse(req.body);
@@ -12,7 +12,12 @@ app.post("/evaluate", async (req, reply) => {
   const verdict = await evaluateRequest(parsed.data);
   verdict.latencyMs = Date.now() - start;
   logger.info(
-    { decision: verdict.decision, reason: verdict.reason, tier: verdict.tier, latencyMs: verdict.latencyMs },
+    {
+      decision: verdict.decision,
+      reason: verdict.reason,
+      tier: verdict.tier,
+      latencyMs: verdict.latencyMs,
+    },
     "Agent evaluation complete"
   );
   return verdict;

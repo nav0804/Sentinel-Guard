@@ -30,39 +30,22 @@ function wafScan(req: IncomingRequest): Verdict | null {
   return null;
 }
 
-export async function runPipeline(
-  req: IncomingRequest
-): Promise<Verdict> {
+export async function runPipeline(req: IncomingRequest): Promise<Verdict> {
+  console.log("--> Starting Tier 1 (Rate Limit)");
   const t1 = await checkRateLimit(req.ip);
-  if (t1) {
-    logger.warn(
-      { ip: req.ip, reason: t1.reason, tier: t1.tier },
-      "Tier 1 block"
-    );
-    return t1;
-  }
+  if (t1) return t1;
 
-  // Tier 2: schema validated upstream by Fastify — pass through
-
-  // Tier 3: WAF regex scan
+  console.log("--> Starting Tier 3 (WAF)");
   const t3 = wafScan(req);
-  if (t3) {
-    logger.warn(
-      { ip: req.ip, reason: t3.reason, tier: t3.tier },
-      "Tier 3 WAF hit"
-    );
-    return t3;
-  }
+  if (t3) return t3;
 
-  // Tier 4: cache lookup
+  console.log("--> Starting Tier 4 (Cache)");
   const hash = hashRequest(req);
   const cached = await getCachedResult(hash);
-  if (cached) {
-    logger.info({ hash, decision: cached.decision }, "Tier 4 cache hit");
+  if (cached)
     return { decision: cached.decision, reason: "Cache hit", tier: 4 };
-  }
 
-  // Tier 5: LLM agents (skip if trusted IP on non-sample turn)
+  console.log("--> Starting Tier 5 (LLM)");
   const runLLM = await shouldRunLLM(req.ip);
   if (!runLLM) {
     logger.info({ ip: req.ip }, "Trusted IP sampled out — SAFE");

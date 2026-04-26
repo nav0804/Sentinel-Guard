@@ -3,3 +3,4 @@ dist
 .env
 .turbo
 *.tsbuildinfo
+apps/proxy/.env.example
