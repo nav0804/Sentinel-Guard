@@ -3,7 +3,7 @@ import { IpRecord, Verdict } from "@sentinel/schemas";
 
 const RATE_LIMIT = 100;
 const WINDOW_SEC = 60;
-const SAMPLE_RATE = 10; //Rating
+const SAMPLE_RATE = 10;
 
 export async function getIpRecord(ip: string): Promise<IpRecord> {
   const raw = await redis.get(`sg:ip:${ip}`);

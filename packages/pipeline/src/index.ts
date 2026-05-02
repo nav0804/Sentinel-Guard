@@ -9,11 +9,10 @@ import { IncomingRequest, Verdict } from "@sentinel/schemas";
 
 const AGENT_RUNNER_URL =
   process.env.AGENT_RUNNER_URL ?? "http://agent-runner:3001";
-// Tier 3: regex WAF rules
 const WAF_PATTERNS = [
-  /(<script[\s\S]*?>)/i, // XSS
-  /(union\s+select|or\s+1=1)/i, // SQLi
-  /(\.\.\/)|(\.\.\\)/, // path traversal
+  /(<script[\s\S]*?>)/i,
+  /(union\s+select|or\s+1=1)/i,
+  /(\.\.\/)|(\.\.\\)/,
 ];
 
 function wafScan(req: IncomingRequest): Verdict | null {
@@ -66,8 +65,6 @@ export async function runPipeline(req: IncomingRequest): Promise<Verdict> {
 
   if (!agentRes.ok) {
     logger.error({ status: agentRes.status }, "Agent runner returned error");
-    // Fail open — return SAFE if agent is down, or fail closed with MALICIOUS
-    // For a WAF, failing closed is safer:
     return {
       decision: "MALICIOUS",
       reason: "Agent runner unavailable",
@@ -76,7 +73,6 @@ export async function runPipeline(req: IncomingRequest): Promise<Verdict> {
   }
   const verdict: Verdict = await agentRes.json();
 
-  // Cache the result for next time
   await setCachedResult(hash, {
     decision: verdict.decision,
     cachedAt: new Date().toISOString(),
