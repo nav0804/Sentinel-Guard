@@ -8,6 +8,8 @@
       { "path": "packages/agents" },
       { "path": "packages/pipeline" },
       { "path": "apps/agent-runner" },
-      { "path": "apps/proxy" }
+      { "path": "apps/proxy" },
+      { "path": "packages/heuristics" },
+      { "path": "packages/ml-detector" }
     ]
   }

@@ -18,7 +18,9 @@
     "@sentinel/agents": "workspace:*",
     "@sentinel/logger": "workspace:*",
     "@sentinel/ip-reputation": "workspace:*",
-    "@sentinel/cache": "workspace:*"
+    "@sentinel/cache": "workspace:*",
+    "@sentinel/heuristics": "workspace:*",
+    "@sentinel/ml-detector": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",

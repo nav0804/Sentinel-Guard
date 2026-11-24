@@ -1,0 +1,83 @@
+<div class="dashboard-container">
+  <header class="header">
+    <h1>🛡️ Sentinel Guard Dashboard</h1>
+  </header>
+
+  <ng-container *ngIf="stats$ | async as stats; else loading">
+    <!-- Top Stats Cards -->
+    <div class="stats-grid">
+      <div class="card stat-card blue">
+        <span class="label">Total Requests</span>
+        <span class="value">{{ stats.total }}</span>
+      </div>
+      <div class="card stat-card green">
+        <span class="label">Allowed</span>
+        <span class="value">{{ stats.allowed }}</span>
+      </div>
+      <div class="card stat-card red">
+        <span class="label">Blocked</span>
+        <span class="value">{{ stats.blocked }}</span>
+      </div>
+      <div class="card stat-card purple">
+        <span class="label">Block Rate</span>
+        <span class="value">{{ getBlockRate(stats) }}%</span>
+      </div>
+    </div>
+
+    <div class="main-content">
+      <!-- Recent Attacks Table -->
+      <div class="card table-card">
+        <h2>Recent Blocked Attacks</h2>
+        <div *ngIf="stats.recent.length === 0" class="empty-state">
+          No blocked requests yet. Try sending a malicious payload!
+        </div>
+        <table *ngIf="stats.recent.length > 0" class="data-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>IP Address</th>
+              <th>Route</th>
+              <th>Tier</th>
+              <th>Reason</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let event of stats.recent">
+              <td class="mono">{{ event.time }}</td>
+              <td class="mono">{{ event.ip }}</td>
+              <td>{{ event.route }}</td>
+              <td>
+                <span class="badge">Tier {{ event.tier }}</span>
+              </td>
+              <td class="reason" [title]="event.reason">{{ event.reason }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Detection by Tier -->
+      <div class="card chart-card">
+        <h2>Detection by Tier</h2>
+        <div *ngIf="objectKeys(stats.byTier).length === 0" class="empty-state">
+          No attacks detected yet.
+        </div>
+        <div *ngFor="let tier of objectKeys(stats.byTier)" class="tier-bar">
+          <div class="tier-label">
+            <span>{{ tier }}</span>
+            <span>{{ stats.byTier[tier] }} blocks</span>
+          </div>
+          <div class="progress-bg">
+            <div
+              class="progress-fill"
+              [style.width.%]="getTierPercentage(stats.byTier[tier], stats.blocked)"
+            ></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+
+  <ng-template #loading>
+    <div class="loading-state">Loading Dashboard Data...</div>
+  </ng-template>
+</div>
