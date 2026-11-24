@@ -1,61 +1,84 @@
 import Fastify from "fastify";
+import websocket from "@fastify/websocket";
 import { IncomingRequestSchema } from "@sentinel/schemas";
 import { logger } from "@sentinel/logger";
 import { runPipeline } from "@sentinel/pipeline";
 import { initializeMLModel } from "@sentinel/ml-detector";
-import * as fs from "fs";
-import * as path from "path";
+import type { WebSocket } from "ws";
 
 const app = Fastify({ logger: false });
 const DOWNSTREAM = process.env.DOWNSTREAM_URL ?? "http://localhost:4000";
 
-app.get("/api/stats", async (req, reply) => {
-  const LOG_DIR = path.join(process.cwd(), "../../logs");
-  const EVENT_LOG_PATH = path.join(LOG_DIR, "waf-events.jsonl");
+// ==========================================
+// 1. In-Memory State (no DB, no files)
+// ==========================================
+interface EventRecord {
+  timestamp: number;
+  ip: string;
+  route: string;
+  method: string;
+  decision: "SAFE" | "MALICIOUS";
+  reason: string;
+  tier: number;
+}
 
-  if (!fs.existsSync(EVENT_LOG_PATH)) {
-    return reply.send({
-      total: 0,
-      blocked: 0,
-      allowed: 0,
-      byTier: {},
-      recent: [],
-    });
+const state = {
+  total: 0,
+  blocked: 0,
+  allowed: 0,
+  byTier: {} as Record<string, number>,
+  recent: [] as EventRecord[], // capped below
+};
+
+const RECENT_CAP = 100; // keep only the last 100 events in memory
+
+function recordEvent(e: EventRecord) {
+  state.total += 1;
+  if (e.decision === "MALICIOUS") {
+    state.blocked += 1;
+    const tierName = `Tier ${e.tier}`;
+    state.byTier[tierName] = (state.byTier[tierName] || 0) + 1;
+    // newest first, capped
+    state.recent.unshift(e);
+    if (state.recent.length > RECENT_CAP) state.recent.pop();
+  } else {
+    state.allowed += 1;
   }
+}
 
-  const fileContent = fs.readFileSync(EVENT_LOG_PATH, "utf-8");
-  const lines = fileContent.trim().split("\n").filter(Boolean);
-  const events = lines.map((line) => JSON.parse(line));
+function getStats() {
+  return {
+    total: state.total,
+    blocked: state.blocked,
+    allowed: state.allowed,
+    byTier: { ...state.byTier },
+    recent: state.recent.slice(0, 10).map((r) => ({
+      ...r,
+      time: new Date(r.timestamp).toLocaleTimeString(),
+    })),
+  };
+}
 
-  const total = events.length;
-  const blocked = events.filter((e: any) => e.decision === "MALICIOUS").length;
-  const allowed = total - blocked;
+// ==========================================
+// 2. WebSocket Hub
+// ==========================================
+const wsClients = new Set<WebSocket>();
 
-  const byTier: Record<string, number> = {};
-  events
-    .filter((e: any) => e.decision === "MALICIOUS")
-    .forEach((e: any) => {
-      const tierName = `Tier ${e.tier}`;
-      byTier[tierName] = (byTier[tierName] || 0) + 1;
-    });
+function broadcast(event: EventRecord) {
+  const payload = JSON.stringify({
+    type: "event",
+    data: { type: "event", event },
+  });
+  for (const client of wsClients) {
+    if (client.readyState === 1) client.send(payload);
+  }
+}
 
-  const recent = events
-    .filter((e: any) => e.decision === "MALICIOUS")
-    .slice(-10)
-    .reverse()
-    .map((e: any) => ({
-      ...e,
-      time: new Date(e.timestamp).toLocaleTimeString(),
-    }));
+app.register(websocket);
 
-  return reply.send({ total, blocked, allowed, byTier, recent });
-});
-
-// Ensure logs directory exists
-const LOG_DIR = path.join(process.cwd(), "../../logs");
-if (!fs.existsSync(LOG_DIR)) fs.mkdirSync(LOG_DIR, { recursive: true });
-const EVENT_LOG_PATH = path.join(LOG_DIR, "waf-events.jsonl");
-
+// ==========================================
+// 3. Error Handler
+// ==========================================
 app.setErrorHandler((error: Error, req, reply) => {
   logger.error({ error: error.message, ip: req.ip }, "Request error");
   reply
@@ -63,6 +86,39 @@ app.setErrorHandler((error: Error, req, reply) => {
     .send({ error: "Internal Server Error", message: error.message });
 });
 
+// ==========================================
+// 4. Routes (Stats + WebSocket) — no duplicates
+// ==========================================
+app.get("/api/stats", async (req, reply) => {
+  return reply.send(getStats());
+});
+
+app.register(async (fastify) => {
+  fastify.get("/ws", { websocket: true }, (socket: WebSocket) => {
+    wsClients.add(socket);
+    logger.info(
+      { clients: wsClients.size },
+      "Dashboard connected via WebSocket"
+    );
+
+    // Send current snapshot the instant a dashboard connects
+    socket.send(
+      JSON.stringify({
+        type: "init",
+        data: { type: "init", stats: getStats() },
+      })
+    );
+
+    socket.on("close", () => {
+      wsClients.delete(socket);
+      logger.info({ clients: wsClients.size }, "Dashboard disconnected");
+    });
+  });
+});
+
+// ==========================================
+// 5. Main WAF Proxy Route
+// ==========================================
 app.all("/*", async (req, reply) => {
   try {
     const safeHeaders: Record<string, string> = {};
@@ -93,8 +149,7 @@ app.all("/*", async (req, reply) => {
 
     const verdict = await runPipeline(parsed.data);
 
-    // 📝 LOG THE EVENT for the dashboard
-    const logEntry = {
+    const logEntry: EventRecord = {
       timestamp: Date.now(),
       ip: cleanRequest.ip,
       route: cleanRequest.route,
@@ -104,22 +159,24 @@ app.all("/*", async (req, reply) => {
       tier: verdict.tier,
     };
 
-    // Append to JSONL file (1 line per request)
-    fs.appendFileSync(EVENT_LOG_PATH, JSON.stringify(logEntry) + "\n");
+    // Update in-memory stats + push to dashboards
+    recordEvent(logEntry);
+    broadcast(logEntry);
 
     if (verdict.decision === "MALICIOUS") {
       logger.warn(
         { ip: req.ip, route: req.url, reason: verdict.reason },
         "Request blocked by WAF"
       );
-      return reply.code(403).send({
-        error: "Forbidden",
-        reason: verdict.reason,
-        tier: verdict.tier,
-      });
+      return reply
+        .code(403)
+        .send({
+          error: "Forbidden",
+          reason: verdict.reason,
+          tier: verdict.tier,
+        });
     }
 
-    // Proxy to downstream
     const downstreamUrl = `${DOWNSTREAM}${req.url}`;
     const fetchOptions: RequestInit = {
       method: req.method,
@@ -146,14 +203,19 @@ app.all("/*", async (req, reply) => {
   }
 });
 
+// ==========================================
+// 6. Startup
+// ==========================================
 async function startServer() {
   try {
     logger.info("🔧 Initializing Sentinel Guard...");
     await initializeMLModel();
     logger.info("✅ ML Model loaded and ready!");
     await app.listen({ port: 3000, host: "0.0.0.0" });
-    logger.info(`🚀 Sentinel Guard proxy listening on http://0.0.0.0:3000`);
-    logger.info(`📊 Dashboard events logging to: ${EVENT_LOG_PATH}`);
+    logger.info("🚀 Sentinel Guard proxy listening on http://0.0.0.0:3000");
+    logger.info(
+      "🔌 WebSocket dashboard endpoint active at ws://localhost:3000/ws"
+    );
   } catch (error) {
     logger.error({ error }, "Failed to start Sentinel Guard");
     process.exit(1);

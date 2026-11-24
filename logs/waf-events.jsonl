@@ -2,3 +2,6 @@
 {"timestamp":1795470955844,"ip":"127.0.0.1","route":"/api/comments","method":"POST","decision":"MALICIOUS","reason":"WAF pattern matched: (<script[\\s\\S]*?>)","tier":3}
 {"timestamp":1795471106161,"ip":"127.0.0.1","route":"/api/users","method":"POST","decision":"MALICIOUS","reason":"WAF pattern matched: (union\\s+select|or\\s+1=1)","tier":3}
 {"timestamp":1795471175534,"ip":"127.0.0.1","route":"/api/chat","method":"POST","decision":"MALICIOUS","reason":"ML detected: toxic (98.4% confidence)","tier":5}
+{"timestamp":1795551714284,"ip":"127.0.0.1","route":"/api/comments","method":"POST","decision":"MALICIOUS","reason":"WAF pattern matched: (<script[\\s\\S]*?>)","tier":3}
+{"timestamp":1795551761341,"ip":"127.0.0.1","route":"/api/data","method":"POST","decision":"SAFE","reason":"ML clean","tier":5}
+{"timestamp":1795552131767,"ip":"127.0.0.1","route":"/api/comments","method":"POST","decision":"MALICIOUS","reason":"WAF pattern matched: (<script[\\s\\S]*?>)","tier":3}
